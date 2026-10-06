@@ -1,0 +1,926 @@
+<meta charset="utf-8">
+<title>Retícula Intransigente</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#05080b; --panel:#0b1116; --line:#17272e; --line2:#203b43;
+  --grid:#2f757a; --cold:#5fd4c6; --fire:#ff6a1f; --ember:#ffc24a; --blood:#d8341c;
+  --text:#e6eef0; --mute:#7f939a; --faint:#50666d;
+  --f-disp:"Anton","Arial Narrow",Impact,sans-serif;
+  --f-body:"IBM Plex Sans",-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--f-body);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;
+  background:repeating-linear-gradient(to bottom,rgba(190,255,250,.022) 0 1px,transparent 1px 3px)}
+strong{color:var(--text);font-weight:600}
+
+.shell{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) 400px;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"head head" "stage rail" "time rail";
+  max-width:1660px;margin:0 auto;padding-block:18px 0;
+  padding-left:clamp(16px,2.4vw,34px);padding-right:clamp(16px,2.4vw,34px);
+  column-gap:clamp(18px,2vw,34px)}
+
+.head{grid-area:head;display:flex;align-items:flex-end;justify-content:space-between;
+  gap:20px 28px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px}
+.brand{display:flex;flex-direction:column;gap:5px;min-width:0}
+.eyebrow{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--grid)}
+h1{font-family:var(--f-disp);font-size:clamp(32px,4.6vw,56px);line-height:.92;margin:0;
+  letter-spacing:.012em;text-transform:uppercase;text-wrap:balance}
+h1 em{font-style:normal;color:var(--fire)}
+.sub{font-size:13.5px;color:var(--mute);max-width:58ch;line-height:1.55;margin:2px 0 0}
+.tele{display:flex;gap:26px;font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);flex-wrap:wrap}
+.tele b{display:block;font-family:var(--f-disp);font-size:27px;letter-spacing:.02em;color:var(--text);
+  font-weight:400;font-variant-numeric:tabular-nums;line-height:1.1}
+.tele .hot b{color:var(--ember)}
+
+.stage{grid-area:stage;position:relative;min-height:clamp(430px,58vh,740px)}
+#globe{display:block;width:100%;height:100%;position:absolute;inset:0;cursor:grab;touch-action:none}
+#globe.drag{cursor:grabbing}
+.stamp{position:absolute;left:0;bottom:4px;font-family:var(--f-mono);font-size:10px;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--faint);pointer-events:none;line-height:1.9}
+.stamp i{color:var(--grid);font-style:normal}
+#globe:focus-visible{outline:1px solid var(--cold);outline-offset:-1px}
+.zoomctl{position:absolute;top:0;right:0;display:flex;flex-direction:column;align-items:stretch;font-family:var(--f-mono);z-index:15}
+.zoomctl button{width:34px;height:30px;background:rgba(5,10,13,.72);border:1px solid var(--line2);
+  color:var(--mute);cursor:pointer;font:inherit;font-size:14px;line-height:1;margin-bottom:-1px}
+.zoomctl button:hover{color:var(--ember);border-color:var(--ember);position:relative}
+.zoomctl button:focus-visible{outline:1px solid var(--cold);outline-offset:1px}
+.zoomctl .lvl{font-size:9.5px;letter-spacing:.06em;color:var(--grid);text-align:center;
+  padding:5px 0 0;font-variant-numeric:tabular-nums}
+.tip{position:absolute;z-index:20;pointer-events:none;transform:translate(-50%,-130%);
+  background:rgba(5,10,13,.93);border:1px solid var(--line2);padding:7px 10px;max-width:252px;
+  opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.tip .c{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ember)}
+.tip .t{font-size:12.5px;line-height:1.32;margin-top:3px}
+
+.rail{grid-area:rail;border-left:1px solid var(--line);
+  padding:18px 0 24px clamp(16px,1.6vw,26px);display:flex;flex-direction:column;gap:14px;min-width:0}
+.railhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.railhead .k{font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--grid)}
+.back{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  background:none;border:1px solid var(--line2);color:var(--mute);padding:4px 8px;cursor:pointer}
+.back:hover{color:var(--ember);border-color:var(--ember)}
+
+.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+  border-top:1px solid var(--line);overflow-y:auto;max-height:min(54vh,580px)}
+.feed li{border-bottom:1px solid var(--line)}
+.feed button{width:100%;text-align:left;background:none;border:0;color:inherit;cursor:pointer;
+  display:grid;grid-template-columns:54px minmax(0,1fr);gap:12px;padding:11px 8px 11px 0;font:inherit}
+.feed button:hover{background:rgba(95,212,198,.055)}
+.feed button:focus-visible{outline:none;background:rgba(95,212,198,.055);box-shadow:inset 2px 0 0 var(--cold)}
+.feed .yr{font-family:var(--f-mono);font-size:11px;color:var(--ember);letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;padding-top:2px}
+.feed .cty{display:block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--grid)}
+.feed .ttl{display:block;font-size:13px;line-height:1.34;margin-top:2px}
+.nothing{font-size:13px;color:var(--mute);padding:14px 0 0;line-height:1.55}
+
+.dossier{display:flex;flex-direction:column;gap:15px;overflow-y:auto;padding-right:4px}
+.dossier .cty{font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ember)}
+.dossier h2{font-family:var(--f-disp);text-transform:uppercase;font-size:clamp(21px,2.1vw,28px);
+  line-height:1.04;margin:3px 0 0;letter-spacing:.01em;text-wrap:balance}
+.meta{display:flex;gap:8px;flex-wrap:wrap;font-family:var(--f-mono);font-size:10px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--mute)}
+.meta span{border:1px solid var(--line2);padding:3px 7px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field .lab{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--grid);display:flex;align-items:center;gap:9px}
+.field .lab::after{content:"";height:1px;flex:1;background:var(--line)}
+.field p{margin:0;font-size:13.5px;line-height:1.54;color:#cfdadd}
+.field.burn{border-left:2px solid var(--fire);padding-left:13px}
+.field.burn .lab{color:var(--fire)}
+
+.time{grid-area:time;border-top:1px solid var(--line);padding:14px 0 20px;
+  display:flex;flex-direction:column;gap:10px}
+.timehead{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.timehead .k{font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--grid)}
+.scale{display:flex;align-items:flex-end;gap:2px}
+.yb{flex:1 1 0;min-width:0;background:none;border:0;padding:0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--faint);font:inherit}
+.yb .bar{width:100%;height:36px;display:flex;align-items:flex-end}
+.yb .bar i{display:block;width:100%;background:var(--line2);transition:background .18s}
+.yb .lb{font-family:var(--f-mono);font-size:9px;font-variant-numeric:tabular-nums;
+  writing-mode:vertical-rl;transition:color .18s}
+.yb:hover .bar i{background:var(--grid)}
+.yb:hover .lb{color:var(--cold)}
+.yb[aria-pressed="true"] .bar i{background:linear-gradient(to top,var(--blood),var(--ember))}
+.yb[aria-pressed="true"] .lb{color:var(--ember)}
+.yb:focus-visible{outline:1px solid var(--cold);outline-offset:2px}
+.allbtn{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  background:none;border:1px solid var(--line2);color:var(--mute);padding:5px 10px;cursor:pointer}
+.allbtn[aria-pressed="true"]{color:var(--ink);background:var(--cold);border-color:var(--cold)}
+.allbtn:focus-visible{outline:1px solid var(--cold);outline-offset:2px}
+
+@media (max-width:1080px){
+  .shell{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "stage" "time" "rail"}
+  .rail{border-left:0;border-top:1px solid var(--line);padding:18px 0 28px}
+  .feed{max-height:none}
+  .stage{min-height:min(78vw,520px)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="shell">
+  <header class="head">
+    <div class="brand">
+      <span class="eyebrow">Atlas de la huelga salvaje · 2000 — 2023</span>
+      <h1>Retícula <em>Intransigente</em></h1>
+      <p class="sub">Cada país es un nodo de la división social del trabajo. Donde la asamblea desborda al sindicato, el nodo <strong>arde</strong>.</p>
+    </div>
+    <div class="tele">
+      <div><span>Nodos encendidos</span><b id="t-nodes">0</b></div>
+      <div class="hot"><span>Focos activos</span><b id="t-fires">0</b></div>
+      <div><span>Corte temporal</span><b id="t-span">00/23</b></div>
+    </div>
+  </header>
+
+  <main class="stage">
+    <canvas id="globe" tabindex="0" aria-label="Globo terráqueo con los focos de conflicto. Arrastra para girar, rueda para ampliar."></canvas>
+    <div class="zoomctl">
+      <button id="zin" type="button" title="Ampliar (tecla +)" aria-label="Ampliar">＋</button>
+      <button id="zout" type="button" title="Reducir (tecla −)" aria-label="Reducir">－</button>
+      <button id="zrst" type="button" title="Vista completa (tecla 0)" aria-label="Vista completa">⟲</button>
+      <span class="lvl" id="zlvl">×1.0</span>
+    </div>
+    <div class="stamp"><i>ORT/SPH</i> · proyección ortográfica · retícula 15°<br>Arrastra para girar · rueda o pellizco para ampliar · pulsa un foco para centrarlo y abrir el expediente</div>
+    <div class="tip" id="tip"><div class="c"></div><div class="t"></div></div>
+  </main>
+
+  <section class="time">
+    <div class="timehead">
+      <span class="k">Línea de fuego — focos abiertos por año</span>
+      <button class="allbtn" id="all" type="button" aria-pressed="true">Todo el periodo</button>
+    </div>
+    <div class="scale" id="scale" role="group" aria-label="Seleccionar año"></div>
+  </section>
+
+  <aside class="rail">
+    <div class="railhead">
+      <span class="k" id="railk">Registro de conflictos</span>
+      <button class="back" id="back" type="button" hidden>← Volver al registro</button>
+    </div>
+    <ul class="feed" id="feed"></ul>
+    <div class="dossier" id="dossier" hidden></div>
+  </aside>
+</div>
+
+<script>
+const EVENTS = [
+{
+"country": "España",
+"iso": "ES",
+"place": "Cádiz, Bahía",
+"lat": 36.53,
+"lon": -6.29,
+"years": [
+2021
+],
+"title": "Huelga del Metal de Cádiz (2021)",
+"origin": "Pérdida de poder adquisitivo, congelación salarial y condiciones de precariedad en el sector naval e industrial.",
+"org": "Cortes de autovías y piquetes organizados en asambleas de barrio y de factoría, ignorando el preacuerdo firmado en Madrid por las cúpulas de CCOO y UGT.",
+"overflow": "Paralización total de la Bahía de Cádiz, enfrentamientos abiertos con antidisturbios y crisis sobre la paz social andaluza."
+},
+{
+"country": "España",
+"iso": "ES",
+"place": "Sevilla",
+"lat": 37.39,
+"lon": -5.98,
+"years": [
+2007
+],
+"title": "Huelga de la Construcción de Sevilla (2007)",
+"origin": "Explotación extrema, horas extra no pagadas y convenios colectivos firmados a la baja por la patronal y los grandes sindicatos.",
+"org": "Asambleas permanentes en polígonos industriales y obras; rechazo frontal a los delegados sindicales oficiales.",
+"overflow": "Siete días de huelga salvaje con cortes masivos de carreteras e inmovilización total del sector en la provincia."
+},
+{
+"country": "España",
+"iso": "ES",
+"place": "Asturias / León",
+"lat": 43.2,
+"lon": -5.8,
+"years": [
+2012
+],
+"title": "La \"Huelga del Carbón\" y Marchas Mineras (Asturias / León, 2012)",
+"origin": "Recortes drásticos a las subvenciones del sector y amenaza de cierre total de las cuencas.",
+"org": "Comités de solidaridad y asambleas permanentes de cuenca, dejando a los sindicatos un papel meramente decorativo.",
+"overflow": "Barricadas masivas, corte de vías férreas, uso de vehículos blindados artesanales (Asturcones) y choque frontal con el Estado."
+},
+{
+"country": "España",
+"iso": "ES",
+"place": "Espacio aéreo / Madrid",
+"lat": 40.47,
+"lon": -3.56,
+"years": [
+2010
+],
+"title": "Huelga Salvaje de Controladores Aéreos (2010)",
+"origin": "Modificación de condiciones laborales, recortes de jornada y ataque al convenio por parte de Fomento.",
+"org": "Paro espontáneo asambleario decidido de forma coordinada por los propios operadores de torre al margen de USCA.",
+"overflow": "Colapso absoluto del espacio aéreo español, provocando que el Gobierno aplicara por primera vez el estado de alarma y la militarización del sector."
+},
+{
+"country": "Francia",
+"iso": "FR",
+"place": "Rotondas / todo el país",
+"lat": 47.5,
+"lon": 2.5,
+"years": [
+2018,
+2019
+],
+"title": "Revuelta de los \"Chalecos Amarillos\" (Gilets Jaunes, 2018–2019)",
+"origin": "Impuesto al diésel, coste de la vida y asfixia fiscal a los trabajadores periféricos y asalariados empobrecidos.",
+"org": "Creación de asambleas locales en rotondas y cortes de vías en todo el país; rechazo radical a la mediación de CGT y CFDT.",
+"overflow": "Puso en jaque al gobierno de Emmanuel Macron durante meses, paralizó el comercio urbano y exigió democracia directa (RIC)."
+},
+{
+"country": "Francia",
+"iso": "FR",
+"place": "Normandía / refinerías",
+"lat": 49.48,
+"lon": 0.4,
+"years": [
+2022,
+2023
+],
+"title": "Bloqueo de Refinerías de Petróleo (TotalEnergies, 2022–2023)",
+"origin": "Salarios congelados frente a una inflación desbocada y beneficios millonarios de las energéticas.",
+"org": "Asambleas generales diarias de trabajadores en huelga prorrogada en los centros de trabajo, desafiando a la dirección de la CGT.",
+"overflow": "Abastecimiento de carburante interrumpido en todo el país, largas colas y fricción directa con los planes económicos estatales."
+},
+{
+"country": "Bolivia",
+"iso": "BO",
+"place": "Cochabamba / El Alto",
+"lat": -17.39,
+"lon": -66.16,
+"years": [
+2000,
+2003
+],
+"title": "La \"Guerra del Agua\" y \"Guerra del Gas\" (2000 y 2003)",
+"origin": "Privatización del suministro hídrico y entrega de los recursos energéticos nacionales a multinacionales extranjeras.",
+"org": "Articulación a través de coordinadoras vecinales, cabildos abiertos y asambleas populares de obreros, mineros y campesinos.",
+"overflow": "Caída de gobiernos enteros (Hugo Banzer y Gonzalo Sánchez de Lozada) y vaciamiento absoluto de la legalidad institucional burguesa."
+},
+{
+"country": "Estados Unidos",
+"iso": "US",
+"place": "Virginia Occ. / Arizona / Oklahoma",
+"lat": 36.5,
+"lon": -98.0,
+"years": [
+2018,
+2019
+],
+"title": "La Ola de Huelgas de Maestros (RedforEd, 2018–2019)",
+"origin": "Bajos salarios crónicos, falta de fondos públicos para la educación y deterioro de los servicios sociales.",
+"org": "Paros organizados de manera descentralizada mediante redes de bases y piquetes, saltándose las prohibiciones y bloqueos de los sindicatos estatales.",
+"overflow": "Extensión a múltiples estados (Virginia Occidental, Arizona, Oklahoma), paralizando sistemas escolares enteros y conectando con la clase trabajadora precarizada."
+},
+{
+"country": "Irán",
+"iso": "IR",
+"place": "Juzestán / Ahvaz",
+"lat": 31.32,
+"lon": 48.67,
+"years": [
+2020,
+2021,
+2022,
+2023
+],
+"title": "Huelgas de los Trabajadores Petroleros y Petroquímicos (2020–2023+)",
+"origin": "Hiperinflación desbocada, impago de salarios y contratos temporales abusivos a través de empresas subcontratadas.",
+"org": "Comités de coordinación clandestinos y consejos obreros (shoras) organizados al margen de los sindicatos estatales corporativos.",
+"overflow": "Transformación rápida de la demanda salarial en consignas políticas contra el régimen teocrático, conectando con el descontento nacional."
+},
+{
+"country": "Irán",
+"iso": "IR",
+"place": "Shush / Haft Tappeh",
+"lat": 32.19,
+"lon": 48.25,
+"years": [
+2018,
+2019,
+2020
+],
+"title": "Ocupación y Autogestión de Haft Tappeh (Azucarera, 2018–2020)",
+"origin": "Impagos sistemáticos de nóminas tras los procesos de privatización corrupta de la agroindustria.",
+"org": "Control directo de la producción a través de la asamblea soberana de la fábrica, expulsando a gerentes y burócratas.",
+"overflow": "Conversión de la planta en un símbolo internacional de control obrero y desafío directo a la estructura de propiedad estatal."
+},
+{
+"country": "Rumanía",
+"iso": "RO",
+"place": "Mioveni",
+"lat": 44.95,
+"lon": 24.94,
+"years": [
+2008
+],
+"title": "Huelga Salvaje en la Planta de Dacia-Renault (Mioveni, 2008)",
+"origin": "Salarios de miseria comparados con la UE y presión insostenible en las cadenas de montaje.",
+"org": "Comité de huelga independiente elegido en asamblea tras expulsar físicamente a los delegados del sindicato oficialista.",
+"overflow": "Paralización total de la mayor industria del país, logrando aumentos salariales masivos fuera de la legalidad de los convenios pactados."
+},
+{
+"country": "China",
+"iso": "CN",
+"place": "Guangdong / Shenzhen",
+"lat": 23.1,
+"lon": 113.25,
+"years": [
+2010
+],
+"title": "Ola de Huelgas en las Zonas Económicas Especiales (Guangdong / Honda, 2010)",
+"origin": "Salarios extremadamente bajos, condiciones de semiesclavitud y ritmos extenuantes en factorías globales.",
+"org": "Comités de huelga espontáneos creados en las líneas de montaje ante la ilegalidad de los sindicatos libres ajenos a la oficialista ACFTU.",
+"overflow": "Duplicación de los salarios mínimos en varias regiones industriales y quiebra temporal del modelo de supeditación laboral del gigante asiático."
+},
+{
+"country": "Reino Unido",
+"iso": "GB",
+"place": "Londres",
+"lat": 51.5,
+"lon": -0.12,
+"years": [
+2019
+],
+"title": "Revuelta de los Constructores (The Construction Workers' Strike, 2019)",
+"origin": "Uso masivo de listas negras patronales (blacklisting) contra activistas sindicales y expansión del falso autónomo.",
+"org": "Paros salvajes espontáneos y asambleas de obra ignorando a los liberados sindicales vinculados a los grandes consorcios.",
+"overflow": "Interrupción de macroproyectos de infraestructuras en Londres y quiebra temporal de las dinámicas de control empresarial."
+},
+{
+"country": "Sudáfrica",
+"iso": "ZA",
+"place": "Marikana",
+"lat": -25.69,
+"lon": 27.48,
+"years": [
+2012
+],
+"title": "La Huelga de la Mina de Marikana (2012)",
+"origin": "Salarios de miseria y condiciones de vida infrahumanas en los yacimientos de platino de Lonmin.",
+"org": "Asambleas de base soberanas en los cerros (koppie) que rompieron con el histórico sindicato minero NUM (aliado del partido gobernante ANC).",
+"overflow": "Brutal represión estatal (Masacre de Marikana), seguida de una ola de huelgas salvajes que paralizó toda la industria minera sudafricana y sacudió los cimientos políticos del régimen posapartheid."
+},
+{
+"country": "Argentina",
+"iso": "AR",
+"place": "Buenos Aires / Gran Bs As",
+"lat": -34.6,
+"lon": -58.4,
+"years": [
+2001,
+2002
+],
+"title": "Fábricas Recuperadas y el movimiento asambleario (2001–2002)",
+"origin": "Desempleo masivo, quiebra fraudulenta de empresas y corralito bancario tras el colapso neoliberal.",
+"org": "Asambleas de trabajadores y coordinadoras barriales (piqueteros) que ocuparon las instalaciones productivas.",
+"overflow": "Expropiación de facto de cientos de empresas, gestión directa sin patronal (\"Ocupar, Resistir, Producir\") y cuestionamiento absoluto de la propiedad privada de los medios de producción."
+},
+{
+"country": "Grecia",
+"iso": "GR",
+"place": "Atenas / Sintagma",
+"lat": 37.98,
+"lon": 23.73,
+"years": [
+2010,
+2011,
+2012
+],
+"title": "Las Huelgas Generales y Revueltas Urbanas (2010–2012)",
+"origin": "Recortes brutales de salarios, pensiones y derechos laborales impuestos por la Troika (FMI, BCE, Comisión Europea).",
+"org": "Comités de lucha independientes en los ministerios, hospitales y el sector público y privado, desbordando a las cúpulas de la GSEE y ADEDY.",
+"overflow": "Ocupación prolongada de la plaza Sintagma en Atenas mediante asambleas populares masivas, huelgas generales indefinidas y colapso de la estabilidad del régimen político griego."
+},
+{
+"country": "Bangladés",
+"iso": "BD",
+"place": "Savar / Ashulia",
+"lat": 23.85,
+"lon": 90.26,
+"years": [
+2010,
+2013
+],
+"title": "Revueltas Textiles en Savar / Ashulia (2010 y 2013)",
+"origin": "Salarios de subsistencia, jornadas de 14 horas y condiciones criminales de seguridad (como el derrumbe del Rana Plaza).",
+"org": "Comités de huelga clandestinos e insurrecciones de fábrica, saltándose los sindicatos corporativos controlados por los empresarios y el Estado.",
+"overflow": "Paro total del sector textil global, quema masiva de factorías, enfrentamientos abiertos con la policía y parálisis de las cadenas de suministro de las multinacionales de la moda rápida."
+},
+{
+"country": "Nigeria",
+"iso": "NG",
+"place": "Lagos / Abuya",
+"lat": 6.45,
+"lon": 3.39,
+"years": [
+2012,
+2023
+],
+"title": "Las Huelgas Generales contra el \"Subsidy Removal\" (2012 y 2023)",
+"origin": "Supresión drástica de los subsidios estatales al combustible, disparando de la noche a la mañana el coste de la vida y el transporte.",
+"org": "Asambleas populares en las calles de Lagos y Abuya, forzando y superando a regañadientes las convocatorias de las cúpulas sindicales oficiales.",
+"overflow": "Paralización total del país, bloqueo de puertos y aeropuertos, y cuestionamiento directo de las políticas macroeconómicas dictadas por el FMI."
+},
+{
+"country": "Corea del Sur",
+"iso": "KR",
+"place": "Geoje / Daewoo",
+"lat": 34.88,
+"lon": 128.62,
+"years": [
+2022
+],
+"title": "Huelgas y Ocupaciones de la Construcción y Astilleros (Daewoo, 2022)",
+"origin": "Precariedad extrema de los subcontratados (subcontracted workers) y congelación de salarios tras la crisis asiática y la pandemia.",
+"org": "Comités de huelga autónomos (como la ocupación de jaulas de soldadura en los diques secos de Daewoo) al margen de la burocracia de la KCTU.",
+"overflow": "Resistencia radical en alturas y espacios confinados, obligando a renegociar convenios y evidenciando el conflicto de clase en el corazón industrial surcoreano."
+}
+];
+const LAND = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//8////44AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPx/n/////AAAA/AAYAAAAfAAAAAAAAAAAAAAAAEO3v4f////+AAAPgAAAAAAAAcAAAAAAAAAAAAAADAAAfgP////+AAAHAAAAAAAAAMAAAAAAAAAAAAAAA9jjCAAP///+AAAAAAAAHgAAP/8AAPAAAAAAAAAAcAAAAAAD///8AAAAAAAAYAAD//gAAAAAAAAAAAAAe6zs/AAB///4AAAAAAABgDA/////wGAAAAwAEAAAI/wM//AAf4AH///////xwHf/////z/+AAAAB//wPI/+sEP4A///wAAAAf8AACHf////////8B8P4AAAAAPPIZ+H/gAD////8AAOcgEQAAAAAAAAAAAE/AAAAAAAAB+AfAAf////4AAHAAAgAAAAAAAAAAA54AAAAAAAALwG/gH/4H//wOB4AAAAAAAAAAAAAAAAAf///////Ng+AP4ADAAA/n////////////////+AD///////8COMAHwAAAAD/P///////////////v8AD/7/////4APwABgAAAAH/P//////////////wfAAA+AH////4APzAAAAAAAD/D/////////////JhgAAAFAAf///8AH/gAAAAAIAOD////////////4AHAAAAQAAP////wH/gAAAAAMBuP////////////wAPgAACAAAH////+f/8AAAAAWAhf////////////AAPAAAAAAAT////+f/+AAAAA3H//////////////+AOAAAAAAAB/////f/8AAAAAHn//////////////+AIAAAAAAAB//////8wAAAAAMf//////////////9AAAAAAAAAA//////2HAAAAAF///////////////4AAAAAAAAAAf/////+AgAAAAD///////////////4AAAAAAAAAAf//////wAAAAAB///yfx/////////wAAAAAAAAAAf/////yAAAAAAB/z/gPj/////////jAAAAAAAAAAf/////gAAAAAA/wY/gDx////////8HAAAAAAAAAAf/////AAAAAAA/gGfnn4////////wAAAAAAAAAAAf////+AAAAAAA/ACY//4///////1gGAAAAAAAAAAP////8AAAAAAA/ACM//4///////hwEAAAAAAAAAAH////4AAAAAAAOLgA//////////4wcAAAAAAAAAAH////4AAAAAAAN/gDC/////////wz8AAAAAAAAAAB////wAAAAAAAf/gAA/////////wDgAAAAAAAAAAA////AAAAAAAA//8YB/////////4EAAAAAAAAAAAAX///AAAAAAAA///f//////////4AAAAAAAAAAAAAX/5BAAAAAAAB//////z///////4AAAAAAAAAAAAAb/gBAAAAAAAH////8/5///////4AAAAAAAAAAAAAF/gBoAAAAAAP////+/4f//////wAAAAAAAAAAAAAE/gAAAAAAAAP////+f8wH/////gAAAAAAAAAAAAAAfgAAAAAAAAf/////P/4D/////IAAAAAAAAAAAAAAPgAQAAAAAAf/////v/8D/+f/4AAAAAAAAAAAAAAAPgwOAAAAAAf/////n/4Af8P+AAAAAAAAAAAAAAAAHxwAwAAAAAf/////n/wAfwH+wAAAAAAAAAAAAAAAB/gAAAAAAAf/////z/gAfgH+AMAAAAAAAAAAAAAAAT8AAAAAAAf/////z+AAfAF/AIAAAAAAAAAAAAAAAB+AAAAAAAf/////94AAOAB/gIAAAAAAAAAAAAAAAAMAAAAAAAf//////AAAOAA/gCAAAAAAAAAAAAAAAAEBQAAAAAP/////+MAAGAAHAFAAAAAAAAAAAAAAAACDfgAAAAH//////8AAGAACAAAAAAAAAAAAAAAAAABP/wAAAAH//////4AABABgADAAAAAAAAAAAAAAAAAP/4AAAAD//////4AABAAQABAAAAAAAAAAAAAAAAAP//gAAAA/H////wAAAACYBgAAAAAAAAAAAAAAAAAH//wAAAAAA////wAAAADYDAAAAAAAAAAAAAAAAAAP//wAAAAAA////gAAAABoPgAAAAAAAAAAAAAAAAAf//4AAAAAA///+AAAAAA4fuQAAAAAAAAAAAAAAAA///+AAAAAA///8AAAAAAYfASAAAAAAAAAAAAAAAA////AAAAAA///4AAAAAAcfYBYAAAAAAAAAAAAAAA////8AAAAAf//4AAAAAAOCEh/AAAAAAAAAAAAAAA/////AAAAAP//wAAAAAAGAAAPgAAAAAAAAAAAAAA/////gAAAAP//wAAAAAADIABPwIAAAAAAAAAAAAAf////gAAAAH//wAAAAAAAOAAPYCAAAAAAAAAAAAAP////AAAAAH//4AAAAAAAACAAMAAAAAAAAAAAAAAP///+AAAAAH//4AAAAAAAAAAAAAAAAAAAAAAAAAAH///+AAAAAH//4AAAAAAAAAHhAAAAAAAAAAAAAAAH///8AAAAAP//4IAAAAAAAAvjAAAAAAAAAAAAAAAD///8AAAAAP//4cAAAAAAAB/jgAAAAAAAAAAAAAAA///8AAAAAP//h4AAAAAAAD/7gAAAAAAAAAAAAAAAf//8AAAAAP//B4AAAAAAAH//wAAAAAAAAAAAAAAAf//4AAAAAH/+AwAAAAAAAf//4AQAAAAAAAAAAAAAf//4AAAAAH//BwAAAAAAB///8AIAAAAAAAAAAAAAf//gAAAAAD//BwAAAAAAD///+AAAAAAAAAAAAAAAf/8AAAAAAD/+BgAAAAAAD////AAAAAAAAAAAAAAAf/8AAAAAAD/8AAAAAAAAD////AAAAAAAAAAAAAAAf/8AAAAAAD/8AAAAAAAAD////AAAAAAAAAAAAAAA//4AAAAAAB/4AAAAAAAAB////AAAAAAAAAAAAAAA//wAAAAAAA/wAAAAAAAAB////AAAAAAAAAAAAAAA//gAAAAAAA/gAAAAAAAAB/h//AAAAAAAAAAAAAAA//AAAAAAAA+AAAAAAAAAB+Av+AAAAAAAAAAAAAAA/8AAAAAAAAAAAAAAAAAAAAAP8AAQAAAAAAAAAAAB/8AAAAAAAAAAAAAAAAAAAAAH8AAIAAAAAAAAAAAB/4AAAAAAAAAAAAAAAAAAAAADQAAOAAAAAAAAAAAB/gAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAB+AAAAAAAAAAAAAAAAAAAAAAAYAAIAAAAAAAAAAAB+AAAAAAAAAAAAAAAAAAAAAAAYAAwAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAADwAACAefH/gAAAAAAAAAAAAAAAAEAAAAAAAAAAAB//8B///////4AAAAAAAAAAAAAAA/AAAAAAAAAAH///8P////////8AAAAAAAAAAAAAB3gAAAAATf//////8//////////+AAAAAAAAAAAgAHgAAAAH////////////////////AAAAAAAB4B////gAAAAP///////////////////4AAAAD////////4AAAAD////////////////////gAAALP///////8AAAAD/////////////////////gAABj////////wAAHg//////////////////////4AAAAD///////8AQ/AB////////////////////+AAAAB//////////AGP//////////////////////AAAAA///////////////////////////////////8AAD//gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const MW = 240, MH = 120, RAD = Math.PI / 180;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ── land dot matrix (1.5° cells, rasterised from Natural Earth 110m) ── */
+const bytes = Uint8Array.from(atob(LAND), c => c.charCodeAt(0));
+const dots = [];
+for (let r = 0; r < MH; r++) {
+  for (let c = 0; c < MW; c++) {
+    const i = r * MW + c;
+    if (!(bytes[i >> 3] >> (7 - (i & 7)) & 1)) continue;
+    const la = (90 - (r + 0.5) * 1.5) * RAD, lo = (-180 + (c + 0.5) * 1.5) * RAD;
+    dots.push(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo));
+  }
+}
+
+/* ── state ── */
+const years = []; for (let y = 2000; y <= 2023; y++) years.push(y);
+const counts = new Map(years.map(y => [y, 0]));
+EVENTS.forEach(e => e.years.forEach(y => counts.set(y, counts.get(y) + 1)));
+const state = { year: null, sel: null, hover: null, rot: -8, tilt: 0.3, zoom: 1 };
+const ZMIN = 1, ZMAX = 5;
+const ease = { on: false, rot: 0, tilt: 0, zoom: 0, t: 0 };
+const isOn = e => state.year === null || e.years.includes(state.year);
+
+const nodes = EVENTS.map(e => {
+  const la = e.lat * RAD, lo = e.lon * RAD;
+  return { e, v: [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)],
+           sx: 0, sy: 0, vis: false, heat: 0, parts: [] };
+});
+
+/* ── canvas ── */
+const cv = document.getElementById("globe"), ctx = cv.getContext("2d");
+let W = 0, H = 0, cx = 0, cy = 0, R0 = 0;
+function size() {
+  const b = cv.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
+  W = b.width; H = b.height;
+  cv.width = Math.round(W * d); cv.height = Math.round(H * d);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  cx = W / 2; cy = H / 2 + H * 0.01; R0 = Math.min(W, H) * 0.44;
+}
+new ResizeObserver(() => { size(); if (RM) draw(); }).observe(cv);
+
+/* flame sprites */
+function sprite(stops, s) {
+  const c = document.createElement("canvas"); c.width = c.height = s;
+  const g = c.getContext("2d"), rg = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  stops.forEach(([o, col]) => rg.addColorStop(o, col));
+  g.fillStyle = rg; g.fillRect(0, 0, s, s); return c;
+}
+const SP_CORE = sprite([[0, "rgba(255,248,214,1)"], [.4, "rgba(255,186,64,.75)"], [1, "rgba(255,106,31,0)"]], 48);
+const SP_SMOKE = sprite([[0, "rgba(255,70,24,.5)"], [1, "rgba(120,20,10,0)"]], 64);
+
+let rotV = RM ? 0 : 0.035, lastT = 0;
+
+function tf(v, ca, sa, ct, st) {
+  const x = v[0] * ca + v[2] * sa, z0 = -v[0] * sa + v[2] * ca, y = v[1];
+  return [x, y * ct - z0 * st, y * st + z0 * ct];
+}
+function slerp(a, b, t) {
+  let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  d = Math.max(-1, Math.min(1, d));
+  const o = Math.acos(d), s = Math.sin(o);
+  if (s < 1e-6) return a.slice();
+  const k1 = Math.sin((1 - t) * o) / s, k2 = Math.sin(t * o) / s;
+  return [a[0] * k1 + b[0] * k2, a[1] * k1 + b[1] * k2, a[2] * k1 + b[2] * k2];
+}
+
+function draw(dt) {
+  const ca = Math.cos(state.rot * RAD), sa = Math.sin(state.rot * RAD);
+  const ct = Math.cos(state.tilt), st = Math.sin(state.tilt);
+  const R = R0 * state.zoom;
+  ctx.clearRect(0, 0, W, H);
+
+  /* ocean well + halo */
+  let g = ctx.createRadialGradient(cx - R * .3, cy - R * .35, R * .05, cx, cy, R);
+  g.addColorStop(0, "#0b1a20"); g.addColorStop(.72, "#070e12"); g.addColorStop(1, "#04070a");
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = "rgba(95,212,198,.22)"; ctx.stroke();
+
+  /* graticule — the lattice */
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(47,117,122,.42)";
+  const seg = (list) => {
+    ctx.beginPath(); let pen = false;
+    for (const v of list) {
+      const p = tf(v, ca, sa, ct, st);
+      if (p[2] <= 0.004) { pen = false; continue; }
+      const x = cx + R * p[0], y = cy - R * p[1];
+      pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true;
+    }
+    ctx.stroke();
+  };
+  const mesh = (step, alpha) => {
+    ctx.strokeStyle = "rgba(47,117,122," + alpha + ")";
+    const d = Math.max(1, Math.min(3, step / 5));
+    for (let lon = -180; lon < 180; lon += step) {
+      const l = [];
+      for (let lat = -84; lat <= 84; lat += d) {
+        const a = lat * RAD, o = lon * RAD;
+        l.push([Math.cos(a) * Math.sin(o), Math.sin(a), Math.cos(a) * Math.cos(o)]);
+      }
+      seg(l);
+    }
+    for (let lat = -75; lat <= 75; lat += step) {
+      const l = [], a = lat * RAD;
+      for (let lon = -180; lon <= 180; lon += d) {
+        const o = lon * RAD;
+        l.push([Math.cos(a) * Math.sin(o), Math.sin(a), Math.cos(a) * Math.cos(o)]);
+      }
+      seg(l);
+    }
+  };
+  if (state.zoom > 2.2) mesh(5, .16);
+  mesh(15, .42);
+
+  /* land dot matrix — cells grow with zoom, so the lattice stays readable */
+  const ds = Math.max(1.5, Math.min(7, R * 0.0262 * 0.46)), dh = ds / 2;
+  for (let i = 0; i < dots.length; i += 3) {
+    const x = dots[i] * ca + dots[i + 2] * sa, z0 = -dots[i] * sa + dots[i + 2] * ca, yv = dots[i + 1];
+    const z = yv * st + z0 * ct;
+    if (z <= 0.02) continue;
+    const sx = cx + R * x, sy = cy - R * (yv * ct - z0 * st);
+    if (sx < -ds || sx > W + ds || sy < -ds || sy > H + ds) continue;
+    ctx.fillStyle = "rgba(150,214,208," + (0.1 + 0.5 * z) + ")";
+    ctx.fillRect(sx - dh, sy - dh, ds, ds);
+  }
+
+  /* node positions */
+  for (const n of nodes) {
+    const p = tf(n.v, ca, sa, ct, st);
+    n.vis = p[2] > 0.02; n.sx = cx + R * p[0]; n.sy = cy - R * p[1]; n.z = p[2];
+    n.on = isOn(n.e);
+  }
+
+  /* reticular links between burning nodes */
+  const live = nodes.filter(n => n.on);
+  if (live.length > 1) {
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,170,80,.3)";
+    const ring = live.slice().sort((a, b) => a.e.lon - b.e.lon);
+    ctx.beginPath();
+    for (let i = 0; i < ring.length; i++) {
+      const A = ring[i].v, B = ring[(i + 1) % ring.length].v;
+      let pen = false;
+      for (let t = 0; t <= 1.0001; t += 0.05) {
+        const p = tf(slerp(A, B, t), ca, sa, ct, st);
+        if (p[2] <= 0.01) { pen = false; continue; }
+        const x = cx + R * p[0], y = cy - R * p[1];
+        pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true;
+      }
+    }
+    ctx.stroke();
+  }
+
+  /* dormant nodes */
+  ctx.save();
+  for (const n of nodes) {
+    if (!n.vis || n.on) continue;
+    ctx.strokeStyle = "rgba(95,212,198,.3)"; ctx.lineWidth = 1;
+    ctx.strokeRect(n.sx - 2.5, n.sy - 2.5, 5, 5);
+  }
+  ctx.restore();
+
+  /* fire */
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const n of nodes) {
+    if (!n.on) continue;
+    const focus = state.sel === n.e || state.hover === n.e;
+    if (!n.vis) { n.parts.length = 0; continue; }
+    if (RM) {
+      const s = focus ? 46 : 34;
+      ctx.globalAlpha = .9; ctx.drawImage(SP_SMOKE, n.sx - s / 2, n.sy - s * .85, s, s);
+      ctx.globalAlpha = 1; ctx.drawImage(SP_CORE, n.sx - 7, n.sy - 11, 14, 14);
+      continue;
+    }
+    const rate = (focus ? 3 : 1.6) * (0.4 + 0.6 * n.z);
+    n.heat += rate;
+    while (n.heat >= 1) {
+      n.heat -= 1;
+      n.parts.push({ x: n.sx + (Math.random() - .5) * 3, y: n.sy, vx: (Math.random() - .5) * .28,
+                     vy: -(0.45 + Math.random() * 0.75), life: 1, sz: 7 + Math.random() * 11,
+                     w: Math.random() * 6.28 });
+    }
+    for (let i = n.parts.length - 1; i >= 0; i--) {
+      const p = n.parts[i];
+      p.x += p.vx + Math.sin(p.w + p.life * 5) * .25; p.y += p.vy; p.vy *= .985;
+      p.life -= 0.019 + Math.random() * .006;
+      if (p.life <= 0) { n.parts.splice(i, 1); continue; }
+      const a = Math.min(1, p.life * 1.5), s = p.sz * (1.5 - p.life * .5);
+      ctx.globalAlpha = a * .4 * (0.35 + 0.65 * n.z);
+      ctx.drawImage(SP_SMOKE, p.x - s, p.y - s, s * 2, s * 2);
+      ctx.globalAlpha = a * (0.4 + 0.6 * n.z);
+      ctx.drawImage(SP_CORE, p.x - s * .4, p.y - s * .4, s * .8, s * .8);
+    }
+    ctx.globalAlpha = 0.45 + 0.35 * Math.sin(performance.now() / 150 + n.e.lat);
+    const bs = focus ? 30 : 20;
+    ctx.drawImage(SP_CORE, n.sx - bs / 2, n.sy - bs / 2, bs, bs);
+  }
+  ctx.restore();
+
+  /* node marks over the flame */
+  const labels = [];
+  for (const n of nodes) {
+    if (!n.vis || !n.on) continue;
+    const focus = state.sel === n.e || state.hover === n.e;
+    ctx.beginPath(); ctx.arc(n.sx, n.sy, focus ? 3.4 : 2.2, 0, 7);
+    ctx.fillStyle = "#fff6dd"; ctx.fill();
+    if (focus) {
+      ctx.beginPath(); ctx.arc(n.sx, n.sy, 11, 0, 7);
+      ctx.strokeStyle = "rgba(255,194,74,.85)"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(n.sx - 18, n.sy); ctx.lineTo(n.sx - 12, n.sy);
+      ctx.moveTo(n.sx + 12, n.sy); ctx.lineTo(n.sx + 18, n.sy);
+      ctx.stroke();
+    }
+    /* region labels once the lattice is magnified */
+    if (state.zoom >= 1.7 || focus) labels.push({ n: n, focus: focus, txt: n.e.place + "  " + span(n.e) });
+  }
+
+  /* label placement — nudge apart so clustered regions stay readable */
+  ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  labels.sort((a, b) => a.n.sy - b.n.sy);
+  const placed = [], offs = [0, -15, 15, -30, 30, -45, 45, -60, 60, -76, 76];
+  for (const L of labels) {
+    const w = ctx.measureText(L.txt).width;
+    const left = L.n.sx > W - w - 46;
+    let bx = left ? L.n.sx - 22 - w : L.n.sx + 16;
+    bx = Math.max(6, Math.min(W - w - 10, bx));
+    let by = L.n.sy;
+    for (const o of offs) {
+      const y = L.n.sy + o;
+      if (y < 14 || y > H - 14) continue;
+      if (!placed.some(p => Math.abs(p.y - y) < 15 && bx < p.x + p.w + 8 && p.x < bx + w + 8)) { by = y; break; }
+    }
+    placed.push({ x: bx, y: by, w: w });
+    ctx.strokeStyle = L.focus ? "rgba(255,194,74,.6)" : "rgba(255,194,74,.3)";
+    ctx.lineWidth = 1; ctx.beginPath();
+    ctx.moveTo(L.n.sx + (left ? -7 : 7), L.n.sy);
+    ctx.lineTo(left ? bx + w + 5 : bx - 5, by);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(5,10,13,.82)";
+    ctx.fillRect(bx - 4, by - 8, w + 8, 16);
+    ctx.fillStyle = L.focus ? "#ffe3b4" : "rgba(255,217,160,.74)";
+    ctx.fillText(L.txt, bx, by + .5);
+  }
+}
+
+function loop(t) {
+  const dt = Math.min(40, t - lastT || 16); lastT = t;
+  if (ease.on) {
+    ease.t = Math.min(1, ease.t + dt / 620);
+    const k = 1 - Math.pow(1 - ease.t, 3);
+    state.rot = ease.r0 + ease.dr * k;
+    state.tilt = ease.t0 + ease.dt * k;
+    state.zoom = ease.z0 + ease.dz * k;
+    setLvl();
+    if (ease.t >= 1) ease.on = false;
+  } else if (!drag.on && state.zoom < 1.25) {
+    state.rot += rotV * dt / 16;
+  }
+  if (state.rot > 360) state.rot -= 360;
+  if (state.rot < -360) state.rot += 360;
+  draw(dt); requestAnimationFrame(loop);
+}
+
+/* ── zoom ── */
+const zlvl = document.getElementById("zlvl");
+const setLvl = () => { zlvl.textContent = "×" + state.zoom.toFixed(1); };
+function setZoom(z, animate) {
+  z = Math.max(ZMIN, Math.min(ZMAX, z));
+  if (animate) glide(state.rot, state.tilt, z);
+  else { state.zoom = z; ease.on = false; setLvl(); if (RM) draw(); }
+}
+function glide(rot, tilt, zoom) {
+  let dr = ((rot - state.rot) % 360 + 540) % 360 - 180;
+  ease.r0 = state.rot; ease.dr = dr;
+  ease.t0 = state.tilt; ease.dt = tilt - state.tilt;
+  ease.z0 = state.zoom; ease.dz = zoom - state.zoom;
+  ease.t = 0; ease.on = true;
+  if (RM) { state.rot = rot; state.tilt = tilt; state.zoom = zoom; ease.on = false; setLvl(); draw(); }
+}
+function centerOn(e, zoom) {
+  const la = e.lat * RAD, lo = e.lon * RAD;
+  const x = Math.cos(la) * Math.sin(lo), y = Math.sin(la), z = Math.cos(la) * Math.cos(lo);
+  const a = Math.atan2(-x, z);
+  const z1 = -x * Math.sin(a) + z * Math.cos(a);
+  glide(a / RAD, Math.atan2(y, z1), zoom === undefined ? Math.max(state.zoom, 2.4) : zoom);
+}
+document.getElementById("zin").addEventListener("click", () => setZoom(state.zoom * 1.5, true));
+document.getElementById("zout").addEventListener("click", () => setZoom(state.zoom / 1.5, true));
+document.getElementById("zrst").addEventListener("click", () => glide(state.rot, 0.3, 1));
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  ease.on = false;
+  setZoom(state.zoom * Math.pow(0.9988, e.deltaY), false);
+}, { passive: false });
+cv.addEventListener("keydown", e => {
+  const k = e.key;
+  if (k === "+" || k === "=") { setZoom(state.zoom * 1.4, true); e.preventDefault(); }
+  else if (k === "-" || k === "_") { setZoom(state.zoom / 1.4, true); e.preventDefault(); }
+  else if (k === "0") { glide(state.rot, 0.3, 1); e.preventDefault(); }
+  else if (k === "ArrowLeft" || k === "ArrowRight") {
+    ease.on = false; state.rot += (k === "ArrowLeft" ? -8 : 8) / state.zoom;
+    if (RM) draw(); e.preventDefault();
+  } else if (k === "ArrowUp" || k === "ArrowDown") {
+    ease.on = false;
+    state.tilt = Math.max(-1.1, Math.min(1.1, state.tilt + (k === "ArrowUp" ? .12 : -.12) / state.zoom));
+    if (RM) draw(); e.preventDefault();
+  }
+});
+
+/* ── interaction ── */
+const drag = { on: false, x: 0, y: 0 };
+const pts = new Map();
+let pinch = 0;
+const pinchDist = () => {
+  const [a, b] = [...pts.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+};
+cv.addEventListener("pointerdown", e => {
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 2) { pinch = pinchDist(); drag.on = false; return; }
+  drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.moved = 0;
+  ease.on = false;
+  cv.classList.add("drag"); cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove", e => {
+  const b = cv.getBoundingClientRect(), mx = e.clientX - b.left, my = e.clientY - b.top;
+  if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 2) {
+    const d = pinchDist();
+    if (pinch > 0) setZoom(state.zoom * (d / pinch), false);
+    pinch = d;
+    return;
+  }
+  if (drag.on) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.moved += Math.abs(dx) + Math.abs(dy);
+    state.rot += dx * 0.32 / state.zoom;
+    state.tilt = Math.max(-1.1, Math.min(1.1, state.tilt + dy * 0.006 / state.zoom));
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (RM) draw();
+    return;
+  }
+  const hit = pick(mx, my);
+  state.hover = hit ? hit.e : null;
+  cv.style.cursor = hit ? "pointer" : "grab";
+  showTip(hit, mx, my);
+  if (RM) draw();
+});
+function endPointer(e) {
+  pts.delete(e.pointerId);
+  if (pts.size < 2) pinch = 0;
+  cv.classList.remove("drag");
+  if (drag.on && drag.moved < 5) {
+    const b = cv.getBoundingClientRect();
+    const hit = pick(e.clientX - b.left, e.clientY - b.top);
+    if (hit) { select(hit.e); centerOn(hit.e); }
+  }
+  drag.on = false;
+}
+cv.addEventListener("pointerup", endPointer);
+cv.addEventListener("pointercancel", endPointer);
+cv.addEventListener("pointerleave", () => { state.hover = null; tip.classList.remove("on"); if (RM) draw(); });
+
+function pick(mx, my) {
+  let best = null, bd = 16 * 16;
+  for (const n of nodes) {
+    if (!n.vis || !n.on) continue;
+    const d = (n.sx - mx) ** 2 + (n.sy - my) ** 2;
+    if (d < bd) { bd = d; best = n; }
+  }
+  return best;
+}
+const tip = document.getElementById("tip");
+function showTip(hit, mx, my) {
+  if (!hit) { tip.classList.remove("on"); return; }
+  tip.querySelector(".c").textContent = hit.e.country + " · " + span(hit.e);
+  tip.querySelector(".t").textContent = hit.e.title;
+  tip.style.left = mx + "px"; tip.style.top = my + "px";
+  tip.classList.add("on");
+}
+
+/* ── rail ── */
+const feed = document.getElementById("feed"), dossier = document.getElementById("dossier"),
+      back = document.getElementById("back"), railk = document.getElementById("railk");
+const span = e => e.years.length === 1 ? e.years[0]
+  : (e.years[e.years.length - 1] - e.years[0] === e.years.length - 1
+      ? e.years[0] + "–" + String(e.years[e.years.length - 1]).slice(2)
+      : e.years.join(" / "));
+
+function renderFeed() {
+  const list = EVENTS.filter(isOn).sort((a, b) => a.years[0] - b.years[0] || a.country.localeCompare(b.country));
+  railk.textContent = state.year === null ? "Registro · 19 conflictos" : "Año " + state.year + " · " + list.length + " focos";
+  feed.innerHTML = "";
+  if (!list.length) {
+    feed.innerHTML = '<li><p class="nothing">Sin focos registrados en este año. La retícula sigue en frío: el trabajo rinde sin interrupción.</p></li>';
+    return;
+  }
+  for (const e of list) {
+    const li = document.createElement("li"), b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = '<span class="yr"></span><span><span class="cty"></span><span class="ttl"></span></span>';
+    b.querySelector(".yr").textContent = span(e);
+    b.querySelector(".cty").textContent = e.country;
+    b.querySelector(".ttl").textContent = e.title;
+    b.addEventListener("click", () => { select(e); centerOn(e); });
+    b.addEventListener("mouseenter", () => { state.hover = e; if (RM) draw(); });
+    b.addEventListener("mouseleave", () => { state.hover = null; if (RM) draw(); });
+    li.appendChild(b); feed.appendChild(li);
+  }
+}
+
+function field(lab, txt, burn) {
+  return '<div class="field' + (burn ? " burn" : "") + '"><span class="lab">' + lab +
+         '</span><p>' + txt.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</p></div>';
+}
+function select(e) {
+  state.sel = e;
+  dossier.innerHTML =
+    '<div><span class="cty">' + e.country + '</span><h2>' + e.title + '</h2></div>' +
+    '<div class="meta"><span>' + span(e) + '</span><span>' + e.place + '</span><span>' +
+      e.lat.toFixed(1) + '° ' + (e.lat >= 0 ? "N" : "S") + " / " + Math.abs(e.lon).toFixed(1) + '° ' + (e.lon >= 0 ? "E" : "W") + '</span></div>' +
+    field("Origen económico / material", e.origin) +
+    field("Forma de organización", e.org) +
+    field("Desborde político y social", e.overflow, true);
+  railk.textContent = "Expediente";
+  feed.hidden = true; dossier.hidden = false; back.hidden = false;
+  if (RM) draw();
+}
+back.addEventListener("click", () => {
+  state.sel = null; feed.hidden = false; dossier.hidden = true; back.hidden = true;
+  renderFeed(); if (RM) draw();
+});
+
+/* ── timeline ── */
+const scale = document.getElementById("scale"), allBtn = document.getElementById("all");
+const maxC = Math.max(...counts.values());
+const ybs = years.map(y => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "yb"; b.setAttribute("aria-pressed", "false");
+  b.title = counts.get(y) + " conflicto(s) abiertos en " + y;
+  b.innerHTML = '<span class="bar"><i style="height:' + (counts.get(y) ? 14 + 86 * counts.get(y) / maxC : 3) +
+                '%"></i></span><span class="lb">' + y + '</span>';
+  b.addEventListener("click", () => setYear(state.year === y ? null : y));
+  scale.appendChild(b); return b;
+});
+allBtn.addEventListener("click", () => setYear(null));
+
+function setYear(y) {
+  state.year = y; state.sel = null;
+  feed.hidden = false; dossier.hidden = true; back.hidden = true;
+  ybs.forEach((b, i) => b.setAttribute("aria-pressed", String(years[i] === y)));
+  allBtn.setAttribute("aria-pressed", String(y === null));
+  const live = EVENTS.filter(isOn);
+  document.getElementById("t-fires").textContent = String(live.length).padStart(2, "0");
+  document.getElementById("t-nodes").textContent = String(new Set(live.map(e => e.country)).size).padStart(2, "0");
+  document.getElementById("t-span").textContent = y === null ? "00/23" : y;
+  nodes.forEach(n => { if (!isOn(n.e)) n.parts.length = 0; });
+  renderFeed();
+  if (RM) draw();
+}
+
+size(); setYear(null); setLvl();
+if (RM) draw(); else requestAnimationFrame(t => { lastT = t; loop(t); });
+</script>
